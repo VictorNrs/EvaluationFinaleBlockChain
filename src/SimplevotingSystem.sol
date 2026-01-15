@@ -13,8 +13,13 @@
             _;
         }
 
+        uint256 public voteStartTime;
+
         function setWorkflowStatus(WorkflowStatus _status) public onlyRole(ADMIN_ROLE) {
             workflowStatus = _status;
+            if (_status == WorkflowStatus.VOTE) {
+                voteStartTime = block.timestamp;
+            }
         }
 
         bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -50,6 +55,7 @@
     }
 
     function vote(uint _candidateId) public atStatus(WorkflowStatus.VOTE) {
+        require(block.timestamp >= voteStartTime + 1 hours, "Voting not open yet");
         require(!voters[msg.sender], "You have already voted");
         require(_candidateId > 0 && _candidateId <= candidateIds.length, "Invalid candidate ID");
 

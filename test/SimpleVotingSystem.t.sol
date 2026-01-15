@@ -57,6 +57,7 @@ contract SimpleVotingSystemTest is Test {
 		votingSystem.addCandidate("Bob");
 		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
 		vm.stopPrank();
+		vm.warp(block.timestamp + 1 hours);
 		vm.startPrank(user1);
 		votingSystem.vote(1);
 		vm.stopPrank();
@@ -75,6 +76,7 @@ contract SimpleVotingSystemTest is Test {
 		votingSystem.addCandidate("Alice");
 		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
 		vm.stopPrank();
+		vm.warp(block.timestamp + 1 hours);
 		vm.startPrank(user1);
 		votingSystem.vote(1);
 		vm.expectRevert("You have already voted");
@@ -168,5 +170,28 @@ contract SimpleVotingSystemTest is Test {
 		vm.expectRevert("Amount must be greater than zero");
 		votingSystem.sendFundsToCandidate{value: 0}(1);
 		vm.stopPrank();
+	}
+    	function test_CannotVoteBeforeOneHourAfterVoteStatus() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+		vm.stopPrank();
+		vm.startPrank(user1);
+		vm.expectRevert("Voting not open yet");
+		votingSystem.vote(1);
+		vm.stopPrank();
+	}
+
+	function test_CanVoteAfterOneHour() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+		vm.stopPrank();
+		// Avancer le temps d'une heure
+		vm.warp(block.timestamp + 1 hours);
+		vm.startPrank(user1);
+		votingSystem.vote(1);
+		vm.stopPrank();
+		assertTrue(votingSystem.voters(user1));
 	}
 }
