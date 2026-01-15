@@ -261,4 +261,52 @@ contract SimpleVotingSystemTest is Test {
 		vm.expectRevert("No candidates");
 		votingSystem.getWinner();
 	}
+    	function test_WithdrawerCanWithdrawAfterCompleted() public {
+		address withdrawer = address(0xDADA);
+		vm.deal(address(votingSystem), 1 ether);
+		vm.startPrank(admin);
+		votingSystem.grantRole(votingSystem.WITHDRAWER_ROLE(), withdrawer);
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.COMPLETED);
+		vm.stopPrank();
+		uint256 balanceBefore = withdrawer.balance;
+		vm.startPrank(withdrawer);
+		votingSystem.withdraw();
+		vm.stopPrank();
+		assertEq(withdrawer.balance, balanceBefore + 1 ether);
+	}
+
+	function test_WithdrawFailsIfNotCompleted() public {
+		address withdrawer = address(0xDADA);
+		vm.deal(address(votingSystem), 1 ether);
+		vm.startPrank(admin);
+		votingSystem.grantRole(votingSystem.WITHDRAWER_ROLE(), withdrawer);
+		vm.stopPrank();
+		vm.startPrank(withdrawer);
+		vm.expectRevert("Function cannot be called at this time");
+		votingSystem.withdraw();
+		vm.stopPrank();
+	}
+
+	function test_WithdrawFailsIfNotWithdrawer() public {
+		vm.deal(address(votingSystem), 1 ether);
+		vm.startPrank(admin);
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.COMPLETED);
+		vm.stopPrank();
+		vm.startPrank(user1);
+		vm.expectRevert();
+		votingSystem.withdraw();
+		vm.stopPrank();
+	}
+
+	function test_WithdrawFailsIfNoFunds() public {
+		address withdrawer = address(0xDADA);
+		vm.startPrank(admin);
+		votingSystem.grantRole(votingSystem.WITHDRAWER_ROLE(), withdrawer);
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.COMPLETED);
+		vm.stopPrank();
+		vm.startPrank(withdrawer);
+		vm.expectRevert("No funds to withdraw");
+		votingSystem.withdraw();
+		vm.stopPrank();
+	}
 }

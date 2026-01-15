@@ -110,4 +110,11 @@
         Candidate memory winner = candidates[winningId];
         return (winner.id, winner.name, winner.voteCount);
     }
+    bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+    function withdraw() public onlyRole(WITHDRAWER_ROLE) atStatus(WorkflowStatus.COMPLETED) {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No funds to withdraw");
+        (bool sent, ) = payable(msg.sender).call{value: balance}("");
+        require(sent, "Withdraw failed");
+    }
 }
