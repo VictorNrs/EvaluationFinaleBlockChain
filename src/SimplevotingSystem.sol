@@ -18,6 +18,14 @@
         }
 
         bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+        bytes32 public constant FOUNDER_ROLE = keccak256("FOUNDER_ROLE");
+        function sendFundsToCandidate(uint _candidateId) public payable onlyRole(FOUNDER_ROLE) {
+            require(_candidateId > 0 && _candidateId <= candidateIds.length, "Invalid candidate ID");
+            address payable recipient = payable(address(uint160(uint(keccak256(abi.encodePacked(_candidateId))))));
+            require(msg.value > 0, "Amount must be greater than zero");
+            (bool sent, ) = recipient.call{value: msg.value}("");
+            require(sent, "Failed to send funds");
+        }
     struct Candidate {
         uint id;
         string name;

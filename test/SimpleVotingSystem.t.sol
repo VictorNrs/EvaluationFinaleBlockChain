@@ -121,4 +121,52 @@ contract SimpleVotingSystemTest is Test {
         assertEq(uint(votingSystem.workflowStatus()), uint(SimpleVotingSystem.WorkflowStatus.VOTE));
         vm.stopPrank();
     }
+    function test_FounderCanSendFundsToCandidate() public {
+		address founder = address(0xF0F0);
+		vm.deal(founder, 1 ether);
+		vm.startPrank(admin);
+		votingSystem.grantRole(votingSystem.FOUNDER_ROLE(), founder);
+		votingSystem.addCandidate("Alice");
+		vm.stopPrank();
+		vm.startPrank(founder);
+		votingSystem.sendFundsToCandidate{value: 0.1 ether}(1);
+		vm.stopPrank();
+	}
+
+	function test_NonFounderCannotSendFunds() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		vm.stopPrank();
+		vm.deal(user1, 1 ether);
+		vm.startPrank(user1);
+		vm.expectRevert();
+		votingSystem.sendFundsToCandidate{value: 0.1 ether}(1);
+		vm.stopPrank();
+	}
+
+	function test_SendFundsToInvalidCandidateFails() public {
+		address founder = address(0xF0F0);
+		vm.deal(founder, 1 ether);
+		vm.startPrank(admin);
+		votingSystem.grantRole(votingSystem.FOUNDER_ROLE(), founder);
+		votingSystem.addCandidate("Alice");
+		vm.stopPrank();
+		vm.startPrank(founder);
+		vm.expectRevert("Invalid candidate ID");
+		votingSystem.sendFundsToCandidate{value: 0.1 ether}(2);
+		vm.stopPrank();
+	}
+
+	function test_SendFundsWithZeroValueFails() public {
+		address founder = address(0xF0F0);
+		vm.deal(founder, 1 ether);
+		vm.startPrank(admin);
+		votingSystem.grantRole(votingSystem.FOUNDER_ROLE(), founder);
+		votingSystem.addCandidate("Alice");
+		vm.stopPrank();
+		vm.startPrank(founder);
+		vm.expectRevert("Amount must be greater than zero");
+		votingSystem.sendFundsToCandidate{value: 0}(1);
+		vm.stopPrank();
+	}
 }
