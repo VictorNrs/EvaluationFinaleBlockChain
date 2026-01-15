@@ -79,7 +79,7 @@ contract SimpleVotingSystemTest is Test {
 		vm.warp(block.timestamp + 1 hours);
 		vm.startPrank(user1);
 		votingSystem.vote(1);
-		vm.expectRevert("You have already voted");
+		vm.expectRevert("You already have a vote NFT");
 		votingSystem.vote(1);
 		vm.stopPrank();
 	}
@@ -193,5 +193,30 @@ contract SimpleVotingSystemTest is Test {
 		votingSystem.vote(1);
 		vm.stopPrank();
 		assertTrue(votingSystem.voters(user1));
+	}
+    	function test_NFTMintedAfterVote() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+		vm.stopPrank();
+		vm.warp(block.timestamp + 1 hours);
+		vm.startPrank(user1);
+		votingSystem.vote(1);
+		vm.stopPrank();
+		// Vérifie que user1 possède bien le NFT
+		assertTrue(votingSystem.voteNFT().hasNFT(user1));
+	}
+
+	function test_CannotVoteIfAlreadyHasNFT() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+		vm.stopPrank();
+		vm.warp(block.timestamp + 1 hours);
+		vm.startPrank(user1);
+		votingSystem.vote(1);
+		vm.expectRevert("You already have a vote NFT");
+		votingSystem.vote(1);
+		vm.stopPrank();
 	}
 }

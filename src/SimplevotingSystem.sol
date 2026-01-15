@@ -3,8 +3,22 @@
 
     import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
     import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
+    import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+
+    contract VoteNFT is ERC721 {
+        uint256 public nextTokenId;
+        constructor() ERC721("VoteNFT", "VOTE") {}
+        function mint(address to) external {
+            _mint(to, nextTokenId);
+            nextTokenId++;
+        }
+        function hasNFT(address owner) external view returns (bool) {
+            return balanceOf(owner) > 0;
+        }
+    }
 
     contract SimpleVotingSystem is Ownable, AccessControl {
+            VoteNFT public voteNFT;
         enum WorkflowStatus { REGISTER_CANDIDATES, FOUND_CANDIDATES, VOTE, COMPLETED }
         WorkflowStatus public workflowStatus;
 
@@ -45,6 +59,7 @@
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         workflowStatus = WorkflowStatus.REGISTER_CANDIDATES;
+        voteNFT = new VoteNFT();
     }
 
     function addCandidate(string memory _name) public onlyRole(ADMIN_ROLE) atStatus(WorkflowStatus.REGISTER_CANDIDATES) {
@@ -56,11 +71,13 @@
 
     function vote(uint _candidateId) public atStatus(WorkflowStatus.VOTE) {
         require(block.timestamp >= voteStartTime + 1 hours, "Voting not open yet");
+        require(!voteNFT.hasNFT(msg.sender), "You already have a vote NFT");
         require(!voters[msg.sender], "You have already voted");
         require(_candidateId > 0 && _candidateId <= candidateIds.length, "Invalid candidate ID");
 
         voters[msg.sender] = true;
         candidates[_candidateId].voteCount += 1;
+        voteNFT.mint(msg.sender);
     }
 
     function getTotalVotes(uint _candidateId) public view atStatus(WorkflowStatus.COMPLETED) returns (uint) {
