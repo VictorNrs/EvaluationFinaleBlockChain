@@ -34,36 +34,37 @@ contract SimpleVotingSystemTest is Test {
 	}
 
 	function test_GrantAndRevokeAdminRole() public {
-		// Grant ADMIN_ROLE to user1
 		vm.startPrank(admin);
 		votingSystem.grantRole(votingSystem.ADMIN_ROLE(), user1);
 		vm.stopPrank();
-		// user1 can now add a candidate
 		vm.startPrank(user1);
 		votingSystem.addCandidate("Bob");
 		vm.stopPrank();
 		assertEq(votingSystem.getCandidatesCount(), 1);
-		// Revoke ADMIN_ROLE from user1
 		vm.startPrank(admin);
 		votingSystem.revokeRole(votingSystem.ADMIN_ROLE(), user1);
 		vm.stopPrank();
-		// user1 cannot add a candidate anymore
 		vm.startPrank(user1);
 		vm.expectRevert();
 		votingSystem.addCandidate("Charlie");
 		vm.stopPrank();
 	}
 
+
 	function test_VoteAndGetVotes() public {
 		vm.startPrank(admin);
 		votingSystem.addCandidate("Alice");
 		votingSystem.addCandidate("Bob");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
 		vm.stopPrank();
 		vm.startPrank(user1);
 		votingSystem.vote(1);
 		vm.stopPrank();
 		vm.startPrank(user2);
 		votingSystem.vote(2);
+		vm.stopPrank();
+		vm.startPrank(admin);
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.COMPLETED);
 		vm.stopPrank();
 		assertEq(votingSystem.getTotalVotes(1), 1);
 		assertEq(votingSystem.getTotalVotes(2), 1);
@@ -72,6 +73,7 @@ contract SimpleVotingSystemTest is Test {
 	function test_CannotVoteTwice() public {
 		vm.startPrank(admin);
 		votingSystem.addCandidate("Alice");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
 		vm.stopPrank();
 		vm.startPrank(user1);
 		votingSystem.vote(1);
@@ -79,4 +81,44 @@ contract SimpleVotingSystemTest is Test {
 		votingSystem.vote(1);
 		vm.stopPrank();
 	}
+    function test_CannotAddCandidate_IfNotRegisterPhase() public {
+        vm.startPrank(admin);
+        votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+        vm.expectRevert("Function cannot be called at this time");
+        votingSystem.addCandidate("Alice");
+        vm.stopPrank();
+    }
+
+    function test_CannotVote_IfNotVotePhase() public {
+        vm.startPrank(admin);
+        votingSystem.addCandidate("Alice");
+        votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.FOUND_CANDIDATES);
+        vm.stopPrank();
+        vm.startPrank(user1);
+        vm.expectRevert("Function cannot be called at this time");
+        votingSystem.vote(1);
+        vm.stopPrank();
+    }
+
+    function test_CannotGetTotalVotes_IfNotCompletedPhase() public {
+        vm.startPrank(admin);
+        votingSystem.addCandidate("Alice");
+        votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+        vm.stopPrank();
+        vm.startPrank(user1);
+        vm.expectRevert("Function cannot be called at this time");
+        votingSystem.getTotalVotes(1);
+        vm.stopPrank();
+    }
+
+    function test_OnlyAdminCanChangeWorkflowStatus() public {
+        vm.startPrank(user1);
+        vm.expectRevert();
+        votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+        vm.stopPrank();
+        vm.startPrank(admin);
+        votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+        assertEq(uint(votingSystem.workflowStatus()), uint(SimpleVotingSystem.WorkflowStatus.VOTE));
+        vm.stopPrank();
+    }
 }

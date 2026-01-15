@@ -1,10 +1,22 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.26;
+    // SPDX-License-Identifier: MIT
+    pragma solidity 0.8.26;
 
-import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
+    import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+    import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 
-contract SimpleVotingSystem is Ownable, AccessControl {
+    contract SimpleVotingSystem is Ownable, AccessControl {
+        enum WorkflowStatus { REGISTER_CANDIDATES, FOUND_CANDIDATES, VOTE, COMPLETED }
+        WorkflowStatus public workflowStatus;
+
+        modifier atStatus(WorkflowStatus _status) {
+            require(workflowStatus == _status, "Function cannot be called at this time");
+            _;
+        }
+
+        function setWorkflowStatus(WorkflowStatus _status) public onlyRole(ADMIN_ROLE) {
+            workflowStatus = _status;
+        }
+
         bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     struct Candidate {
         uint id;
@@ -19,16 +31,17 @@ contract SimpleVotingSystem is Ownable, AccessControl {
     constructor() Ownable(msg.sender) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
+        workflowStatus = WorkflowStatus.REGISTER_CANDIDATES;
     }
 
-    function addCandidate(string memory _name) public onlyRole(ADMIN_ROLE) {
+    function addCandidate(string memory _name) public onlyRole(ADMIN_ROLE) atStatus(WorkflowStatus.REGISTER_CANDIDATES) {
         require(bytes(_name).length > 0, "Candidate name cannot be empty");
         uint candidateId = candidateIds.length + 1;
         candidates[candidateId] = Candidate(candidateId, _name, 0);
         candidateIds.push(candidateId);
     }
 
-    function vote(uint _candidateId) public {
+    function vote(uint _candidateId) public atStatus(WorkflowStatus.VOTE) {
         require(!voters[msg.sender], "You have already voted");
         require(_candidateId > 0 && _candidateId <= candidateIds.length, "Invalid candidate ID");
 
@@ -36,7 +49,7 @@ contract SimpleVotingSystem is Ownable, AccessControl {
         candidates[_candidateId].voteCount += 1;
     }
 
-    function getTotalVotes(uint _candidateId) public view returns (uint) {
+    function getTotalVotes(uint _candidateId) public view atStatus(WorkflowStatus.COMPLETED) returns (uint) {
         require(_candidateId > 0 && _candidateId <= candidateIds.length, "Invalid candidate ID");
         return candidates[_candidateId].voteCount;
     }
