@@ -94,4 +94,20 @@
         require(_candidateId > 0 && _candidateId <= candidateIds.length, "Invalid candidate ID");
         return candidates[_candidateId];
     }
+    
+    function getWinner() public view atStatus(WorkflowStatus.COMPLETED) returns (uint winnerId, string memory winnerName, uint winnerVotes) {
+        require(candidateIds.length > 0, "No candidates");
+        uint maxVotes = 0;
+        uint winningId = 0;
+        for (uint i = 0; i < candidateIds.length; i++) {
+            uint cid = candidateIds[i];
+            if (candidates[cid].voteCount > maxVotes) {
+                maxVotes = candidates[cid].voteCount;
+                winningId = cid;
+            }
+        }
+        require(winningId != 0, "No winner");
+        Candidate memory winner = candidates[winningId];
+        return (winner.id, winner.name, winner.voteCount);
+    }
 }

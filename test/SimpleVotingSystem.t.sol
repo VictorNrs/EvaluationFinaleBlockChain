@@ -219,4 +219,46 @@ contract SimpleVotingSystemTest is Test {
 		votingSystem.vote(1);
 		vm.stopPrank();
 	}
+    function test_GetWinner_ReturnsCorrectWinner() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		votingSystem.addCandidate("Bob");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+		vm.stopPrank();
+		vm.warp(block.timestamp + 1 hours);
+		vm.startPrank(user1);
+		votingSystem.vote(1); // Alice: 1 vote
+		vm.stopPrank();
+		vm.startPrank(user2);
+		votingSystem.vote(1); // Alice: 2 votes
+		vm.stopPrank();
+		vm.startPrank(admin);
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.COMPLETED);
+		vm.stopPrank();
+		(uint winnerId, string memory winnerName, uint winnerVotes) = votingSystem.getWinner();
+		assertEq(winnerId, 1);
+		assertEq(winnerName, "Alice");
+		assertEq(winnerVotes, 2);
+	}
+
+	function test_GetWinner_RevertsIfNotCompleted() public {
+		vm.startPrank(admin);
+		votingSystem.addCandidate("Alice");
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.VOTE);
+		vm.stopPrank();
+		vm.warp(block.timestamp + 1 hours);
+		vm.startPrank(user1);
+		votingSystem.vote(1);
+		vm.stopPrank();
+		vm.expectRevert("Function cannot be called at this time");
+		votingSystem.getWinner();
+	}
+
+	function test_GetWinner_RevertsIfNoCandidates() public {
+		vm.startPrank(admin);
+		votingSystem.setWorkflowStatus(SimpleVotingSystem.WorkflowStatus.COMPLETED);
+		vm.stopPrank();
+		vm.expectRevert("No candidates");
+		votingSystem.getWinner();
+	}
 }
